@@ -1,55 +1,58 @@
+package syntaxanalyzer;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Scanner;
 
+import codegeneration.Kind;
+import codegeneration.VMWriter;
+import codegeneration.SymbolTable;
+import codegeneration.Command;
 public class CompilationEngine {
 	private JackTokenizer tokenizer;
 	private File file;
 	private FileWriter output;
 	private String indentation;
-	CompilationEngine(String filename)
+	private VMWriter writer;
+	private String className;
+	private SymbolTable symbolTable;
+	private int nLocals = 0;
+	private int countIF = -1;
+	private int countWhile = -1;
+	public CompilationEngine(String filename)
 			throws IOException {
+
 		file = new File(filename);
-		output = new FileWriter(file);
+		writer = new VMWriter(file);
 		tokenizer = new JackTokenizer(filename.split("[.]")[0] + ".jack");
+		symbolTable = new SymbolTable();
 		indentation = "";
+		className = "";
 	}
 
-	void compileClass() throws IOException {
+	public void compileClass() throws IOException {
 		tokenizer.advance();
 		if (tokenizer.tokenType() == Constants.KEYWORD
 				&& tokenizer.keyword() == Constants.CLASS) {
-			output.write(indentation + "<class>\n");
-			indentation += "  ";   // increase indentation
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
-			if (tokenizer.tokenType() == Constants.IDENTIFIER) {
-				output.write(this.indentation + tokenizer.getTag() + "\n");
+			if (tokenizer.tokenType() == Constants.IDENTIFIER) { // class name
+				className = tokenizer.getToken();
 				tokenizer.advance();
             } else {
                 System.out.println("Error in class name");
                 return;
             }
-			if (tokenizer.tokenType() == Constants.SYMBOL) {
-				output.write(indentation + tokenizer.getTag() + "\n");
+			if (tokenizer.tokenType() == Constants.SYMBOL) { // class bracket {
 				tokenizer.advance();
             } else {
                 System.out.println("Error in bracket of class");
                 return;
             }
-			
+
 			compileClassVariables();
-			compileMethods();
-			output.write(indentation + tokenizer.getTag() + "\n");
+			compileMethods(); //heeeeeeeeeeeeeeeeeeeere
 			tokenizer.advance();
-			indentation = indentation.substring(0, indentation.length() - 2);  
-											// decrease indentation
-			output.write(indentation + "</class>\n");
 		}else {
-			System.out.println("There's Error\n");
+			System.out.println("class keyword not found\n");
 			return ;
 		}
 	}
@@ -57,22 +60,24 @@ public class CompilationEngine {
 		
 		while(tokenizer.keyword() == Constants.STATIC
 				|| tokenizer.keyword() == Constants.FIELD){
-			output.write(indentation + "<classVarDec>\n");
-			indentation += "  ";
-			output.write(indentation + tokenizer.getTag() + "\n");
+			symbolTable.startSubroutine();
+			String varName = "";
+			String varType = "";
+			int varKind = tokenizer.keyword();
 			tokenizer.advance();
 			if (tokenizer.keyword() == Constants.BOOLEAN 
 					|| tokenizer.keyword() == Constants.INT 
 					|| tokenizer.keyword() == Constants.CHAR
 					|| tokenizer.tokenType() == Constants.IDENTIFIER) {
-				output.write(indentation + tokenizer.getTag() + "\n");
+				varType = tokenizer.getToken();
             } else {
                 System.out.println("ERROR in data type");
                 return;
             }
 			tokenizer.advance();
 			if (tokenizer.tokenType() == Constants.IDENTIFIER) {
-				output.write(indentation + tokenizer.getTag() + "\n");
+				varName = tokenizer.getToken();
+				symbolTable.define(varName,varType,varKind);
             } else {
                 System.out.println("ERROR in variable name");
                 return;
@@ -80,14 +85,13 @@ public class CompilationEngine {
 			tokenizer.advance(); // handling ; and ,
 			while (tokenizer.tokenType() == Constants.SYMBOL) {
 				if(tokenizer.getToken().equals(";")){
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 					break;
 				}else if(tokenizer.getToken().equals(",")){
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 					if(tokenizer.tokenType() == Constants.IDENTIFIER){
-						output.write(indentation + tokenizer.getTag() + "\n");
+						varName = tokenizer.getToken();
+						symbolTable.define(varName,varType,varKind);
 					}else{
 						System.out.println("ERROR in variable name");
 						return;
@@ -98,54 +102,47 @@ public class CompilationEngine {
 	                return;
 				}
 				tokenizer.advance();
-            }    
-			
-			indentation = indentation.substring(0, indentation.length() - 2);
-			output.write(indentation + "</classVarDec>\n");
+            }
 		}
-		
 	}
 	private void compileMethods() throws IOException{
 		while(tokenizer.keyword() == Constants.FUNCTION
 				|| tokenizer.keyword() == Constants.METHOD
 				|| tokenizer.keyword() == Constants.CONSTRUCTOR){
-			output.write(indentation + "<subroutineDec>\n");
-			indentation += "  ";
-			
+			nLocals = 0;
+			symbolTable.startSubroutine();
 			// header of function
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
+			String funName = "";
 			if(tokenizer.tokenType() == Constants.IDENTIFIER
 					|| tokenizer.tokenType() == Constants.KEYWORD){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error invalid function return type");
 				return ;
 			}
 			if(tokenizer.tokenType() == Constants.IDENTIFIER){
-				output.write(indentation + tokenizer.getTag() + "\n");
+				funName = tokenizer.getToken();
 				tokenizer.advance();
 			}else{
 				System.out.println("Error invalid function name");
 				return ;
 			}
-			if(tokenizer.tokenType() == Constants.SYMBOL){
-				output.write(indentation + tokenizer.getTag() + "\n");
+
+			if(tokenizer.tokenType() == Constants.SYMBOL){ // parameters bracket in the function
 				tokenizer.advance();
 			}else{
 				System.out.println("Error ,there's no symbol (");
 				return ;
 			}
 			// parameters of function
-			output.write(indentation + "<parameterList>\n");
-			indentation += "  ";
 			while(tokenizer.tokenType() == Constants.IDENTIFIER
 				|| tokenizer.tokenType() == Constants.KEYWORD){
-				output.write(indentation + tokenizer.getTag() + "\n");
+				String argType = tokenizer.getToken();
+				String argName = "";
 				tokenizer.advance();
 				if(tokenizer.tokenType() == Constants.IDENTIFIER){
-					output.write(indentation + tokenizer.getTag() + "\n");
+					argName = tokenizer.getToken();
 					tokenizer.advance();
 				}else{
 					System.out.println("Error invalid parameter");
@@ -155,80 +152,72 @@ public class CompilationEngine {
 					if(tokenizer.symbol().equals(")")){
 						break;
 					}
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 				}else{
 					System.out.println("Error invalid parameter");
 					return ;
 				}
+				symbolTable.define(argName,argType,Kind.ARG);
 			}
-			indentation = indentation.substring(0,indentation.length() - 2);
-			output.write(indentation + "</parameterList>\n");
+
 			if(tokenizer.tokenType() == Constants.SYMBOL){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error ,there's no symbol )");
 				return ;
 			}
-			output.write(indentation + "<subroutineBody>\n");
-			indentation += "  ";
+
 			if(tokenizer.tokenType() == Constants.SYMBOL){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error ,there's no symbol {");
 				return ;
 			}
+			// entered the function
 			compileVarDecs();
-			compileStatements();
+			writer.writeFunctions(className + "." +funName,nLocals);
+			compileStatements(); // heeeeeeeeeeeeeeeeeeeeeeeeeeeeeere
 			if(tokenizer.tokenType() == Constants.SYMBOL){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error ,there's no symbol }");
 				return ;
 			}
-			indentation = indentation.substring(0,indentation.length() - 2);
-			output.write(indentation + "</subroutineBody>\n");
-			indentation = indentation.substring(0,indentation.length() - 2);
-			output.write(indentation + "</subroutineDec>\n");
 		}
 		System.out.println("there is no more functions" + tokenizer.keyword());
 	}
-	void compileVarDecs() throws IOException{
+	private void compileVarDecs() throws IOException{
+
 		while(tokenizer.keyword() == Constants.VAR){
-			output.write(indentation + "<varDec>\n");
-			indentation += "  ";
-			output.write(indentation + tokenizer.getTag() + "\n");
+			nLocals ++;
 			tokenizer.advance();
+			String varType = "";
+			String varName = "";
 			if(tokenizer.keyword() == Constants.CHAR
 			|| tokenizer.keyword() == Constants.BOOLEAN
 			|| tokenizer.tokenType() == Constants.IDENTIFIER
 			|| tokenizer.keyword() == Constants.INT){
-				output.write(indentation + tokenizer.getTag() + "\n");
+				varType = tokenizer.getToken();
 				tokenizer.advance();
 			}else{
 				System.out.println("Error in the datatype inside function");
 				return ;
 			}
 			if(tokenizer.tokenType() == Constants.IDENTIFIER){
-				output.write(indentation + tokenizer.getTag() + "\n");
+				varName = tokenizer.getToken();
 				tokenizer.advance();
 			}else{
 				System.out.println("Error in the name of a function");
 				return ;
 			}
+			symbolTable.define(varName,varType,Kind.VAR);
 			while (tokenizer.tokenType() == Constants.SYMBOL) {
 				if(tokenizer.getToken().equals(";")){
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 					break;
 				}else if(tokenizer.getToken().equals(",")){
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 					if(tokenizer.tokenType() == Constants.IDENTIFIER){
-						output.write(indentation + tokenizer.getTag() + "\n");
 					}else{
 						System.out.println("ERROR in variable name");
 						return;
@@ -239,130 +228,114 @@ public class CompilationEngine {
 	                return;
 				}
 				tokenizer.advance();
-            }  
-			indentation = indentation.substring(0, indentation.length() - 2);
-			output.write(indentation + "</varDec>\n");
+            }
 		}
 	}
-	void compileStatements() throws IOException{
-		
-		output.write(indentation + "<statements>\n");
-		indentation += "  ";
+	private void compileStatements() throws IOException{
+
 		while(tokenizer.keyword() == Constants.RETURN
 		|| tokenizer.keyword() == Constants.DO
 		|| tokenizer.keyword() == Constants.LET
 		|| tokenizer.keyword() == Constants.IF
-		|| tokenizer.keyword() == Constants.WHILE){
-			
-			if(tokenizer.keyword() == Constants.RETURN){
+		|| tokenizer.keyword() == Constants.WHILE) {
+
+			if (tokenizer.keyword() == Constants.RETURN) { //done
 				compileReturnStatement();
-			}else if(tokenizer.keyword() == Constants.DO){
+			} else if (tokenizer.keyword() == Constants.DO) {
 				compileDoStatement();
-			}else if(tokenizer.keyword() == Constants.LET){ // let statement
+			} else if (tokenizer.keyword() == Constants.LET) { // let statement
 				compileLetStatement();
-			}else if(tokenizer.keyword() == Constants.IF){
+			} else if (tokenizer.keyword() == Constants.IF) { // if statement
 				compileIfStatement();
-			}else if(tokenizer.keyword() == Constants.WHILE){
+			} else if (tokenizer.keyword() == Constants.WHILE) {
 				compileWhileStatement();
-			}else {
+			} else {
 				System.out.println("Invalid statement");
-				return ;
+				return;
 			}
 		}
-		
-		//System.out.println("no more statements keyword" + " " + tokenizer.getToken());
-		
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</statements>\n");
 	}
 	private void compileWhileStatement() throws IOException{
-		output.write(indentation + "<whileStatement>\n");
-		indentation += "  ";
-		output.write(indentation + tokenizer.getTag() + "\n");
 		tokenizer.advance();
-		
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol (");
 			return ;
 		}
+		int WhileNum = ++countWhile;
+		writer.writeLabel("WHILE_EXP" + WhileNum);
 		compileExpression();
+		writer.writeArithmetic(Command.NOT);
+		writer.writeIf("WHILE_END" + WhileNum);
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol )");
 			return ;
 		}
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol {");
 			return ;
 		}
 		compileStatements();
+		writer.writeGoto("WHILE_EXP" + WhileNum);
+		writer.writeLabel("WHILE_END" + WhileNum);
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol }");
 			return ;
 		}
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</whileStatement>\n");
+
 	}
 	private void compileIfStatement() throws IOException{
-		output.write(indentation + "<ifStatement>\n");
-		indentation += "  ";
-		output.write(indentation + tokenizer.getTag() + "\n");
 		tokenizer.advance();
 		
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol (");
 			return ;
 		}
 		compileExpression();
+		int IFnum = ++ countIF;
+		writer.writeIf("IF_TRUE" + IFnum);
+		writer.writeGoto("IF_FALSE" + IFnum);
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol )");
 			return ;
 		}
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol {");
 			return ;
 		}
+		writer.writeLabel("IF_TRUE" + IFnum);
 		compileStatements();
 		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol }");
 			return ;
 		}
+		writer.writeGoto("IF_END" + IFnum);
+		writer.writeLabel("IF_FALSE" + IFnum);
 		// else statement
 		if(tokenizer.keyword() == Constants.ELSE){
 			compileElseStatement();
 		}
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</ifStatement>\n");
+		writer.writeLabel("IF_END" + IFnum);
 	}
 	private void compileElseStatement() throws IOException{
-		output.write(indentation + tokenizer.getTag() + "\n");
 		tokenizer.advance();
 		if(tokenizer.tokenType() == Constants.SYMBOL
 			&& tokenizer.symbol().equals("{")){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol {");
@@ -371,7 +344,6 @@ public class CompilationEngine {
 		compileStatements();
 		if(tokenizer.tokenType() == Constants.SYMBOL
 			&& tokenizer.symbol().equals("}")){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the symbol }");
@@ -395,7 +367,7 @@ public class CompilationEngine {
 			tokenizer.advance();
 			compileExpression();
 			if(tokenizer.tokenType() == Constants.SYMBOL
-			&& tokenizer.symbol().equals("]")){
+				&& tokenizer.symbol().equals("]")){
 				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
@@ -452,62 +424,58 @@ public class CompilationEngine {
 		output.write(indentation + "</doStatement>\n");
 	}
 	private void compileLetStatement() throws IOException{
-		output.write(indentation + "<letStatement>\n");
-		indentation += "  ";
-		output.write(indentation + tokenizer.getTag() + "\n");
 		tokenizer.advance();
+		String variableName;
 		if(tokenizer.tokenType() == Constants.IDENTIFIER){
-			output.write(indentation + tokenizer.getTag() + "\n");
+			variableName = tokenizer.getToken();
 			tokenizer.advance();
 		}else{
 			System.out.println("the identifier is invalid");
 			return ;
 		}
+		if(symbolTable.IndexOf(variableName) == -1){
+			System.out.println("Error " + variableName + "is not defined");
+			return;
+		}
 		if(tokenizer.symbol().equals("[")){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 			compileExpression();
 			if(tokenizer.tokenType() == Constants.SYMBOL
 			&& tokenizer.symbol().equals("]")){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error invalid parameter");
 				return ;
 			}
 		}
-		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
+		if(tokenizer.tokenType() == Constants.SYMBOL
+				&& tokenizer.symbol().equals("=")){// the assignment symbol
 			tokenizer.advance();
 		}else{
-			System.out.println("Error in the semicolon inside function");
+			System.out.println("Error in the = inside function");
 			return ;
 		}
 		compileExpression();
+		writer.writePop(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
 		if(tokenizer.tokenType() == Constants.SYMBOL
 				&& tokenizer.symbol().equals(";")){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else{
 			System.out.println("Error in the semicolon inside function");
 			return ;
 		}
-		indentation = indentation.substring(0, indentation.length() - 2);
-		output.write(indentation + "</letStatement>\n");
 	}
 	private void compileReturnStatement() throws IOException{
-		output.write(indentation + "<returnStatement>\n");
-		indentation += "  ";
-		output.write(indentation + tokenizer.getTag() + "\n");
 		tokenizer.advance();
-		if(tokenizer.tokenType() == Constants.SYMBOL){
-			output.write(indentation + tokenizer.getTag() + "\n");
+		if(tokenizer.tokenType() == Constants.SYMBOL && tokenizer.symbol().equals(";")){
+			writer.writePush(Constants.CONSTANT,0);
+			writer.writeReturn();
 			tokenizer.advance();
 		}else if(tokenizer.tokenType() == Constants.IDENTIFIER
 				|| tokenizer.tokenType() == Constants.KEYWORD){
 			compileExpression();
-			if(tokenizer.tokenType() == Constants.SYMBOL){
-				output.write(indentation + tokenizer.getTag() + "\n");
+			if(tokenizer.tokenType() == Constants.SYMBOL && tokenizer.symbol().equals(";")){
+				writer.writeReturn();
 				tokenizer.advance();
 			}else{
 				System.out.println("Error in the semicolon inside return");
@@ -517,8 +485,6 @@ public class CompilationEngine {
 			System.out.println("Error in the semicolon inside return");
 			return ;
 		}
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</returnStatement>\n");
 	}
 	private void compileExpressionList() throws IOException{
 		output.write(indentation + "<expressionList>\n");
@@ -541,46 +507,48 @@ public class CompilationEngine {
 		indentation = indentation.substring(0,indentation.length() - 2);
 		output.write(indentation + "</expressionList>\n");
 	}
+	private void compileArithmetic(String symbol) throws IOException {
+		if(symbol.equals("+")){ writer.writeArithmetic(Command.ADD); }
+		else if(symbol.equals("*")){ writer.writeArithmetic(Command.MULT);}
+		else if(symbol.equals("-")){ writer.writeArithmetic(Command.SUB);}
+		else if(symbol.equals("/")){ writer.writeArithmetic(Command.DIV);}
+		else if(symbol.equals("|")){ writer.writeArithmetic(Command.OR);}
+		else if(symbol.equals("&amp")){ writer.writeArithmetic(Command.AND);}
+		else if(symbol.equals("&lt")){ writer.writeArithmetic(Command.LT);}
+		else if(symbol.equals("&gt")){ writer.writeArithmetic(Command.GT);}
+		else if(symbol.equals("=")){ writer.writeArithmetic(Command.EQ);}
+	}
 	private void compileExpression() throws IOException{
-		output.write(indentation + "<expression>\n");
-		indentation += "  ";
 		compileTerm();
 		while (tokenizer.symbol().equals("+") || tokenizer.symbol().equals("-") 
 			|| tokenizer.symbol().equals("*") || tokenizer.symbol().equals("/") ||
 			tokenizer.symbol().equals("&amp;") || tokenizer.symbol().equals("|") || 
 			tokenizer.symbol().equals("&lt;") || tokenizer.symbol().equals("&gt;") ||
 			tokenizer.symbol().equals("=")) {
-			output.write(indentation + tokenizer.getTag() + "\n");
+			String sym = tokenizer.symbol();
 			tokenizer.advance();
 	        compileTerm();
+			compileArithmetic(sym);
 		}
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</expression>\n");
 	}
 	private void compileTerm() throws IOException{
-		output.write(indentation + "<term>\n");
-		indentation += "  ";
 		if(tokenizer.tokenType() == Constants.IDENTIFIER
 			|| tokenizer.tokenType() == Constants.KEYWORD){
-			output.write(indentation + tokenizer.getTag() + "\n");
+			String variableName = tokenizer.getToken();
+			writer.writePush(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
 			tokenizer.advance();
 			if(tokenizer.tokenType() == Constants.SYMBOL ){
 				String symb = new String(tokenizer.symbol());
 				if(symb.equals(".")){
-					output.write(indentation + tokenizer.getTag() + "\n");
-					tokenizer.advance();
 					if(tokenizer.tokenType() == Constants.IDENTIFIER){
-						output.write(indentation + tokenizer.getTag() + "\n");
 						tokenizer.advance();
 					}else{
 						System.out.println("Error in the name of a fun");
 						return ;
 					}
 					if(tokenizer.tokenType() == Constants.SYMBOL){
-						output.write(indentation + tokenizer.getTag() + "\n");
-						tokenizer.advance();
 					}else{
-						System.out.println("Error invalid parameter");
+						System.out.println("Error invalid (");
 						return ;
 					}
 					compileExpressionList();
@@ -588,15 +556,13 @@ public class CompilationEngine {
 						output.write(indentation + tokenizer.getTag() + "\n");
 						tokenizer.advance();
 					}else{
-						System.out.println("Error invalid parameter");
+						System.out.println("Error invalid )");
 						return ;
 					}
 				}else if(symb.equals("[")){
-					output.write(indentation + tokenizer.getTag() + "\n");
 					tokenizer.advance();
 					compileExpression();
 					if(tokenizer.symbol().equals("]")){
-						output.write(indentation + tokenizer.getTag() + "\n");
 						tokenizer.advance();
 					}else{
 						System.out.println("Error in ] ");
@@ -608,15 +574,14 @@ public class CompilationEngine {
 			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 		}else if(tokenizer.tokenType() == Constants.INT_CONST){
-			output.write(indentation + tokenizer.getTag() + "\n");
+			writer.writePush(Constants.CONSTANT,Integer.valueOf(tokenizer.getToken()));
+
 			tokenizer.advance();
 		}else if(tokenizer.tokenType() == Constants.SYMBOL
 				&& tokenizer.symbol().equals("(")){
-			output.write(indentation + tokenizer.getTag() + "\n");
 			tokenizer.advance();
 			compileExpression();
 			if(tokenizer.symbol().equals(")")){
-				output.write(indentation + tokenizer.getTag() + "\n");
 				tokenizer.advance();
 			}else{
 				System.out.println("Error in )");
@@ -624,19 +589,21 @@ public class CompilationEngine {
 			}
 		}else if(tokenizer.tokenType() == Constants.SYMBOL
 				&& (tokenizer.symbol().equals("-") || tokenizer.symbol().equals("~"))){
-			output.write(indentation + tokenizer.getTag() + "\n");
+			String sym = tokenizer.symbol();
 			tokenizer.advance();
 			compileTerm();
+			if(sym.equals("-"))
+				writer.writeArithmetic(Command.NEG);
+			else
+				writer.writeArithmetic(Command.NOT);
 		}else{
 			System.out.println("Error in the name of a function");
 			return ;
 		}
-		indentation = indentation.substring(0,indentation.length() - 2);
-		output.write(indentation + "</term>\n");
 	}
 	
-	void close() throws IOException{
+	public void close() throws IOException{
 		tokenizer.close();
-		output.close();
+		writer.close();
 	}
 }
