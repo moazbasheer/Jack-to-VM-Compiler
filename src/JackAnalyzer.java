@@ -36,7 +36,7 @@ public class JackAnalyzer {
 			
 			for (int i = 0; i < fileName.length; i++) {
 				if(fileName[i].equals("")) continue;
-				String outputName = fileName[i].split("[.]")[0] + ".xml";
+				String outputName = fileName[i].split("[.]")[0] + ".vm";
 				CompilationEngine engine = new CompilationEngine(outputName);
 				engine.compileClass();
 				engine.close();
