@@ -14,7 +14,6 @@ public class JackTokenizer {
 
 	private File file;
 	private Scanner scan;
-	//private FileWriter writer;
 	JackTokenizer(String filename)
 			throws IOException {
 		insideComment = false;
@@ -207,6 +206,5 @@ public class JackTokenizer {
 	}
 	public void close() throws IOException{
 		scan.close();
-		//writer.close();
 	}
 }
