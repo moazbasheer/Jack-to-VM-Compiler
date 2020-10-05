@@ -30,8 +30,8 @@ public class CompilationEngine {
 	}
 
 	public void compileClass() throws IOException {
-		tokenizer.advance();
-		if (tokenizer.tokenType() == Constants.KEYWORD
+	    	tokenizer.advance();
+       	    if (tokenizer.tokenType() == Constants.KEYWORD
 				&& tokenizer.keyword() == Constants.CLASS) {
 			tokenizer.advance();
 			if (tokenizer.tokenType() == Constants.IDENTIFIER) { // class name
