@@ -1,6 +1,5 @@
-package codegeneration;
-import syntaxanalyzer.CompilationEngine;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 
 
@@ -11,6 +10,7 @@ public class JackCompiler {
         file = new File(filename);
         String[] fileName = null;
         if (file.isFile()) {
+
             if (filename.contains(".jack")) {
                 fileName = new String[1];
                 fileName[0] = filename;
@@ -33,7 +33,7 @@ public class JackCompiler {
         }
         try {
             for (int i = 0; i < fileName.length; i++) {
-                if(fileName[i].equals("")) continue;
+                if(fileName[i].length() == 0) continue;
                 String outputName = fileName[i].split("[.]")[0] + ".vm";
                 CompilationEngine engine = new CompilationEngine(outputName);
                 engine.compileClass();
@@ -42,8 +42,9 @@ public class JackCompiler {
         } catch (IOException e) {
             System.out.println("IOException");
         }
+        System.out.println("Compilation completed!");
     }
-    public static void main(String[] args){
+    public static void main(String[] args) {
         filename = "";
         for (int i = 0; i < args.length; i++) {
             if (i == 0)
@@ -51,6 +52,7 @@ public class JackCompiler {
             else
                 filename += " " + args[i];
         }
+
         JackCompiler compiler = new JackCompiler();
         compiler.run();
     }

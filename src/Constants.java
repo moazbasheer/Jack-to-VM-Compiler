@@ -29,4 +29,5 @@ public class Constants {
 	public static final int OBJECT = 26;
 	public static final int STRING = 27;
 	public static final String TABLE_SRC = "symbol tables.txt";
+	public static final int CONSTANT = 28;
 }

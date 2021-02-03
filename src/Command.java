@@ -1,4 +1,3 @@
-package codegeneration;
 
 public class Command {
     public static final int ADD = 0;

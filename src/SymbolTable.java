@@ -1,4 +1,3 @@
-package codegeneration;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -11,20 +10,21 @@ public class SymbolTable {
     private int ArgID = 0;
     private boolean insideMethod;
 
-    public SymbolTable(){ // creates new symbol table
+    public SymbolTable() { // creates new symbol table
         classTable = new HashMap<>();
         subroutineTable = new HashMap<>();
         insideMethod = false;
     }
 
-    public void startSubroutine(){
+    public void startSubroutine() {
         subroutineTable = new HashMap<>();
         VarID = 0;
         ArgID = 0;
         insideMethod = true;
     }
 
-    public void define(String name,String type,int kind){
+    public void define(String name,String type,int kind) {
+        System.out.println(name);
         if(classTable.containsKey(name) || subroutineTable.containsKey(name)){
             System.out.println("This name is not valid, it's already exist.");
             return;

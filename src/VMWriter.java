@@ -1,6 +1,3 @@
-package codegeneration;
-import syntaxanalyzer.Constants;
-
 import java.io.FileWriter;
 import java.io.File;
 import java.io.IOException;
@@ -8,9 +5,9 @@ import java.io.IOException;
 public class VMWriter {
     private FileWriter output;
     public VMWriter(File file) throws IOException {
-        System.out.println(file.getName());
         output = new FileWriter(file);
     }
+
     private String getSegment(int segment){
         if(segment == Kind.ARG){
             return "argument";
@@ -18,9 +15,12 @@ public class VMWriter {
             return "local";
         }else if(segment == Constants.CONSTANT){
             return "constant";
+        } else if(segment == Kind.TEMP) {
+            return "temp";
         }
         return "";
     }
+
     public void writePush(int segment,int index) throws IOException {
         output.write("push " + getSegment(segment) + " " + index + "\n");
     }
@@ -61,8 +61,8 @@ public class VMWriter {
         output.write("if-goto " + label + "\n");
     }
 
-    public void writeCall(String name,int nArgs){
-
+    public void writeCall(String name,int nArgs) throws IOException {
+        output.write("call " + name + " " + nArgs + "\n");
     }
 
     public void writeFunctions(String name,int nLocals) throws IOException {

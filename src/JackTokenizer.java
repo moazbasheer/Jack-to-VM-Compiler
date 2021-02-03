@@ -11,20 +11,17 @@ public class JackTokenizer {
 	private String fileContent;
 	private String currentToken;
 	private HashMap<String, String> map; // the token and its type.
-
-	private File file;
 	private Scanner scan;
 	JackTokenizer(String filename)
 			throws IOException {
 		insideComment = false;
-		file = new File(filename);
+		File file = new File(filename);
 		scan = new Scanner(file);
 		currentToken = "";
 		fileContent = "";
 		cursor = 0;
 		map = new HashMap<>();
-		/*writer = new FileWriter(new File(filename.split("[.]")[0] + "T.xml"));
-		writer.write("<tokens>\n");*/
+
 		while (scan.hasNext()) {
 			String temp = scan.nextLine();
 			if(temp.length() > 2 && temp.substring(0,2).equals("//")){
@@ -40,7 +37,7 @@ public class JackTokenizer {
 			String type = scan.next();
 			map.put(token, type);
 		}
-		
+
 	}
 
 	public boolean hasMoreTokens() throws IOException {
@@ -53,7 +50,7 @@ public class JackTokenizer {
 		currentToken = "";
 		boolean insideString = false;
 		while (cursor < fileContent.length()) {
-			
+
 			if (!insideComment && fileContent.charAt(cursor) == '/'
 					&& fileContent.charAt(cursor + 1) == '*') {
 				insideComment = true;
@@ -112,11 +109,11 @@ public class JackTokenizer {
 				break;
 			}
 		}
-		/*if(currentToken.trim().length() == 0){
-			writer.write("</tokens>\n");
-		}else{
-			writer.write("  " + getTag() + "\n");
-		}*/
+        /*if(currentToken.trim().length() == 0){
+            writer.write("</tokens>\n");
+        }else{
+            writer.write("  " + getTag() + "\n");
+        }*/
 	}
 
 	private boolean isNumeric(String token) {
@@ -144,48 +141,53 @@ public class JackTokenizer {
 				&& currentToken.charAt(sz - 1) == '"') {
 			return Constants.STRING_CONST;
 		}
-		
+
 		return Constants.IDENTIFIER;
 	}
+
 	public int keyword(){
-        if (currentToken.equals("class")) { return Constants.CLASS; }
-        else if (currentToken.equals("method")) { return Constants.METHOD; }
-        else if (currentToken.equals("function")) { return Constants.FUNCTION; }
-        else if (currentToken.equals("constructor")) { return Constants.CONSTRUCTOR; }
-        else if (currentToken.equals("int")) { return Constants.INT; }
-        else if (currentToken.equals("boolean")) { return Constants.BOOLEAN; }
-        else if (currentToken.equals("char")) { return Constants.CHAR; }
-        else if (currentToken.equals("void")) { return Constants.VOID; }
-        else if (currentToken.equals("var")) { return Constants.VAR; }
-        else if (currentToken.equals("static")) { return Constants.STATIC; }
-        else if (currentToken.equals("field")) { return Constants.FIELD; }
-        else if (currentToken.equals("let")) { return Constants.LET; }
-        else if (currentToken.equals("do")) { return Constants.DO; }
-        else if (currentToken.equals("if")) { return Constants.IF; }
-        else if (currentToken.equals("else")) { return Constants.ELSE; }
-        else if (currentToken.equals("while")) { return Constants.WHILE; }
-        else if (currentToken.equals("return")) { return Constants.RETURN; }
-        else if (currentToken.equals("true")) { return Constants.TRUE; }
-        else if (currentToken.equals("false")) { return Constants.FALSE; }
-        else if (currentToken.equals("null")) { return Constants.NULL; }
-        else if (currentToken.equals("this")) { return Constants.THIS; }
-        else { return -1; }
+		if (currentToken.equals("class")) { return Constants.CLASS; }
+		else if (currentToken.equals("method")) { return Constants.METHOD; }
+		else if (currentToken.equals("function")) { return Constants.FUNCTION; }
+		else if (currentToken.equals("constructor")) { return Constants.CONSTRUCTOR; }
+		else if (currentToken.equals("int")) { return Constants.INT; }
+		else if (currentToken.equals("boolean")) { return Constants.BOOLEAN; }
+		else if (currentToken.equals("char")) { return Constants.CHAR; }
+		else if (currentToken.equals("void")) { return Constants.VOID; }
+		else if (currentToken.equals("var")) { return Constants.VAR; }
+		else if (currentToken.equals("static")) { return Constants.STATIC; }
+		else if (currentToken.equals("field")) { return Constants.FIELD; }
+		else if (currentToken.equals("let")) { return Constants.LET; }
+		else if (currentToken.equals("do")) { return Constants.DO; }
+		else if (currentToken.equals("if")) { return Constants.IF; }
+		else if (currentToken.equals("else")) { return Constants.ELSE; }
+		else if (currentToken.equals("while")) { return Constants.WHILE; }
+		else if (currentToken.equals("return")) { return Constants.RETURN; }
+		else if (currentToken.equals("true")) { return Constants.TRUE; }
+		else if (currentToken.equals("false")) { return Constants.FALSE; }
+		else if (currentToken.equals("null")) { return Constants.NULL; }
+		else if (currentToken.equals("this")) { return Constants.THIS; }
+		else { return -1; }
 	}
+
 	public String symbol(){
 		if (tokenType() != Constants.SYMBOL) { return "Error"; }
-        if (currentToken.equals("<")) { return "&lt;"; }
-        else if (currentToken.equals(">")) { return "&gt;"; }
-        else if (currentToken.equals("&")) { return "&amp;"; }
-        else { return new String(currentToken); }
+		if (currentToken.equals("<")) { return "&lt;"; }
+		else if (currentToken.equals(">")) { return "&gt;"; }
+		else if (currentToken.equals("&")) { return "&amp;"; }
+		else { return new String(currentToken); }
 	}
+
 	public String stringVal(){
 		if (tokenType() != Constants.STRING_CONST) { return "ERROR"; }
-        return currentToken.replace("\"", "");
+		return currentToken.replace("\"", "");
 	}
+
 	public String identifier(){
 		if (tokenType() != Constants.IDENTIFIER) { return "ERROR"; }
-        return currentToken;
+		return currentToken;
 	}
+
 	private String getTypeText(){
 		if(tokenType() == Constants.KEYWORD) return "keyword";
 		else if(tokenType() == Constants.IDENTIFIER) return "identifier";
@@ -194,6 +196,7 @@ public class JackTokenizer {
 		else if(tokenType() == Constants.STRING_CONST) return "stringConstant";
 		return "Error";
 	}
+
 	public String getTag(){
 		String temp = currentToken;
 		if(getTypeText().equals("stringConstant")){
@@ -204,6 +207,7 @@ public class JackTokenizer {
 		String text = ("<" + getTypeText() + "> " + temp + " </" + getTypeText() + ">");
 		return text;
 	}
+
 	public void close() throws IOException{
 		scan.close();
 	}
