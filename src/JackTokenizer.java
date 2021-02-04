@@ -90,7 +90,7 @@ public class JackTokenizer {
                 continue;
             }
             char tmp = fileContent.charAt(cursor);
-            if (map.containsKey(String.valueOf(tmp))) { // symbol
+            if (map.containsKey(String.valueOf(tmp)) ) { // symbol
                 if (map.get(String.valueOf(tmp)).equals("symbol")
                         && !currentToken.equals("")) {
                     break;
@@ -101,7 +101,7 @@ public class JackTokenizer {
                 }
             }
             currentToken = currentToken + String.valueOf(tmp);
-            if (map.containsKey(currentToken)) {
+            if (map.containsKey(currentToken) && (!Character.isAlphabetic(fileContent.charAt(cursor + 1)) )) {
                 if (map.get(currentToken).equals("keyword")) {
                     cursor++;
                     break;

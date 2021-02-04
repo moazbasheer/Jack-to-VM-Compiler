@@ -18,6 +18,12 @@ public class VMWriter {
             return "constant";
         } else if (segment == Kind.TEMP) {
             return "temp";
+        } else if (segment == Kind.POINTER) {
+            return "pointer";
+        } else if (segment == Kind.THAT) {
+            return "that";
+        } else if (segment == Kind.THIS) {
+            return "this";
         }
         return "";
     }
@@ -49,6 +55,8 @@ public class VMWriter {
             output.write("eq\n");
         } else if (command == Command.GT) {
             output.write("gt\n");
+        } else if (command == Command.LT) {
+            output.write("lt\n");
         } else if (command == Command.AND) {
             output.write("and\n");
         }

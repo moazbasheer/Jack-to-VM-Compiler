@@ -158,7 +158,7 @@ public class CompilationEngine {
 
                 if (tokenizer.tokenType() == Constants.SYMBOL) {
                     if (tokenizer.symbol().equals(")")) {
-                        System.out.println(argName);
+
                         symbolTable.define(argName, argType, Kind.ARG);
                         break;
                     }
@@ -167,7 +167,6 @@ public class CompilationEngine {
                     System.out.println("Error invalid parameter");
                     return;
                 }
-                System.out.println(argName);
                 symbolTable.define(argName, argType, Kind.ARG);
             }
 
@@ -187,7 +186,7 @@ public class CompilationEngine {
             // entered the function
             int nLocals = compileVarDecs();
             writer.writeFunctions(className + "." + functionName, nLocals);
-            compileStatements(); // heeeeeeeeeeeeeeeeeeeeeeeeeeeeeere
+            compileStatements();
 
             if (tokenizer.tokenType() == Constants.SYMBOL) {
                 tokenizer.advance();
@@ -360,13 +359,17 @@ public class CompilationEngine {
             return;
         }
 
-        writer.writeGoto("IF_END" + IFnum);
-        writer.writeLabel("IF_FALSE" + IFnum);
+
         // else statement
         if (tokenizer.keyword() == Constants.ELSE) {
+            writer.writeGoto("IF_END" + IFnum);
+            writer.writeLabel("IF_FALSE" + IFnum);
             compileElseStatement();
+            writer.writeLabel("IF_END" + IFnum);
+        } else {
+            writer.writeLabel("IF_FALSE" + IFnum);
         }
-        writer.writeLabel("IF_END" + IFnum);
+
     }
 
     private void compileElseStatement() throws IOException {
@@ -479,10 +482,13 @@ public class CompilationEngine {
             System.out.println("Error: " + variableName + "is not defined");
             return;
         }
-
+        boolean isArray = false;
         if (tokenizer.symbol().equals("[")) {
+            isArray = true;
             tokenizer.advance();
             compileExpression();
+            writer.writePush(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
+            writer.writeArithmetic(Command.ADD);
             if (tokenizer.tokenType() == Constants.SYMBOL
                     && tokenizer.symbol().equals("]")) {
                 tokenizer.advance();
@@ -501,7 +507,15 @@ public class CompilationEngine {
         }
 
         compileExpression();
-        writer.writePop(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
+
+        if(isArray) {
+            writer.writePop(Kind.TEMP, 0);
+            writer.writePop(Kind.POINTER, 1);
+            writer.writePush(Kind.TEMP, 0);
+            writer.writePop(Kind.THAT, 0);
+        } else {
+            writer.writePop(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
+        }
 
         if (tokenizer.tokenType() == Constants.SYMBOL
                 && tokenizer.symbol().equals(";")) {
@@ -521,8 +535,6 @@ public class CompilationEngine {
             writer.writeReturn();
             tokenizer.advance();
         } else if (tokenizer.tokenType() != Constants.SYMBOL) {
-
-            System.out.println(tokenizer.getToken());
             compileExpression();
 
             if (tokenizer.tokenType() == Constants.SYMBOL && tokenizer.symbol().equals(";")) {
@@ -605,16 +617,20 @@ public class CompilationEngine {
                 || tokenizer.tokenType() == Constants.KEYWORD) {
 
             String identifierName = tokenizer.getToken();
+            System.out.println(tokenizer.getToken());
             tokenizer.advance();
 
             if (tokenizer.tokenType() == Constants.SYMBOL) {
                 String sym = new String(tokenizer.symbol());
                 if (sym.equals(".")) {
                     identifierName += '.';
+                    System.out.println(tokenizer.getToken());
                     tokenizer.advance();
+                    System.out.println(tokenizer.getToken());
 
                     if (tokenizer.tokenType() == Constants.IDENTIFIER) {
                         identifierName += tokenizer.getToken();
+                        System.out.println(tokenizer.getToken());
                         tokenizer.advance();
                     } else {
                         System.out.println("Expected: a function name after the dot.");
@@ -640,7 +656,10 @@ public class CompilationEngine {
                 } else if (sym.equals("[")) {
                     tokenizer.advance();
                     compileExpression();
-
+                    writer.writePush(symbolTable.KindOf(identifierName), symbolTable.IndexOf(identifierName));
+                    writer.writeArithmetic(Command.ADD);
+                    writer.writePop(Kind.POINTER, 1);
+                    writer.writePush(Kind.THAT, 0);
                     if (tokenizer.symbol().equals("]")) {
                         tokenizer.advance();
                     } else {
@@ -658,7 +677,7 @@ public class CompilationEngine {
                         return;
                     }
                 } else {
-                    if (identifierName.equals("true") || identifierName.equals("false")) {
+                    if (identifierName.equals("true") || identifierName.equals("false") || identifierName.equals("null")) {
                         writer.writePush(Constants.CONSTANT, 0);
                         if (identifierName.equals("true")) {
                             writer.writeArithmetic(Command.NOT);
@@ -670,15 +689,27 @@ public class CompilationEngine {
                 }
             }
         } else if (tokenizer.tokenType() == Constants.STRING_CONST) {
-            // output.write(indentation + tokenizer.getTag() + "\n");
+            String str = tokenizer.getToken();
+            str = str.substring(1, str.length() - 1);
+            writer.writePush(Constants.CONSTANT, (int) str.length());
+            writer.writeCall("String.new", 1);
+
+            for(int i = 0; i < str.length(); i++) {
+                writer.writePush(Constants.CONSTANT, (int) str.charAt(i));
+                writer.writeCall("String.appendChar", 2);
+            }
+
             tokenizer.advance();
         } else if (tokenizer.tokenType() == Constants.INT_CONST) {
+
             writer.writePush(Constants.CONSTANT, Integer.valueOf(tokenizer.getToken()));
             tokenizer.advance();
         } else if (tokenizer.tokenType() == Constants.SYMBOL
                 && tokenizer.symbol().equals("(")) {
+
             tokenizer.advance();
             compileExpression();
+
             if (tokenizer.symbol().equals(")")) {
                 tokenizer.advance();
             } else {
@@ -687,9 +718,11 @@ public class CompilationEngine {
             }
         } else if (tokenizer.tokenType() == Constants.SYMBOL
                 && (tokenizer.symbol().equals("-") || tokenizer.symbol().equals("~"))) {
+
             String sym = tokenizer.symbol();
             tokenizer.advance();
             compileTerm();
+
             if (sym.equals("-"))
                 writer.writeArithmetic(Command.NEG);
             else
