@@ -6,7 +6,8 @@ import java.io.IOException;
 public class JackCompiler {
     private static String filename;
     private static File file;
-    private void run(){
+
+    private void run() {
         file = new File(filename);
         String[] fileName = null;
         if (file.isFile()) {
@@ -16,7 +17,7 @@ public class JackCompiler {
                 fileName[0] = filename;
             } else {
                 System.out.println("Not a jack file");
-                return ;
+                return;
             }
         } else if (file.isDirectory()) {
             fileName = file.list();
@@ -33,7 +34,7 @@ public class JackCompiler {
         }
         try {
             for (int i = 0; i < fileName.length; i++) {
-                if(fileName[i].length() == 0) continue;
+                if (fileName[i].length() == 0) continue;
                 String outputName = fileName[i].split("[.]")[0] + ".vm";
                 CompilationEngine engine = new CompilationEngine(outputName);
                 engine.compileClass();
@@ -44,6 +45,7 @@ public class JackCompiler {
         }
         System.out.println("Compilation completed!");
     }
+
     public static void main(String[] args) {
         filename = "";
         for (int i = 0; i < args.length; i++) {
