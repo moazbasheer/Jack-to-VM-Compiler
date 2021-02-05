@@ -1,4 +1,3 @@
-import java.util.ArrayList;
 import java.util.HashMap;
 
 public class SymbolTable {
@@ -26,10 +25,11 @@ public class SymbolTable {
             System.out.println("This name is not valid, it's already exist.");
             return;
         }
-        if (kind == Kind.STATIC) {
-            classTable.put(name, new Tuple(name, type, kind, StaticID++));
-        } else if (kind == Kind.FIELD) {
-            classTable.put(name, new Tuple(name, type, kind, FieldID++));
+
+        if (kind == Constants.STATIC) {
+            classTable.put(name, new Tuple(name, type, Kind.STATIC, StaticID++));
+        } else if (kind == Constants.FIELD) {
+            classTable.put(name, new Tuple(name, type, Kind.FIELD, FieldID++));
         } else if (kind == Kind.VAR) {
             subroutineTable.put(name, new Tuple(name, type, kind, VarID++));
         } else if (kind == Kind.ARG) {
@@ -60,10 +60,15 @@ public class SymbolTable {
      */
     public int KindOf(String name) {
         if (classTable.containsKey(name)) {
+
+            if (classTable.get(name).getKind() == Kind.FIELD)
+                return Kind.THIS;
+
             return classTable.get(name).getKind();
         } else if (subroutineTable.containsKey(name)) {
             return subroutineTable.get(name).getKind();
         }
+
         return Kind.NONE;
     }
 
@@ -81,4 +86,12 @@ public class SymbolTable {
         }
         return -1;
     }
+
+    public int getNumFields() { return this.FieldID; }
+
+    public int getNumStatics() { return this.StaticID; }
+
+    public int getNumLocals() { return this.VarID; }
+
+    public int getNumArgs() { return this.ArgID; }
 }

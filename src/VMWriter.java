@@ -24,6 +24,8 @@ public class VMWriter {
             return "that";
         } else if (segment == Kind.THIS) {
             return "this";
+        } else if (segment == Kind.STATIC) {
+            return "static";
         }
         return "";
     }

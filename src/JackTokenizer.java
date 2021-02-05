@@ -112,11 +112,6 @@ public class JackTokenizer {
                 break;
             }
         }
-        /*if(currentToken.trim().length() == 0){
-            writer.write("</tokens>\n");
-        }else{
-            writer.write("  " + getTag() + "\n");
-        }*/
     }
 
     private boolean isNumeric(String token) {
@@ -191,6 +186,8 @@ public class JackTokenizer {
             return Constants.NULL;
         } else if (currentToken.equals("this")) {
             return Constants.THIS;
+        } else if (currentToken.equals("that")) {
+            return Constants.THAT;
         } else {
             return -1;
         }

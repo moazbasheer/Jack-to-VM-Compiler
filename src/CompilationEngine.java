@@ -4,9 +4,6 @@ import java.io.IOException;
 
 public class CompilationEngine {
     private JackTokenizer tokenizer;
-    private File file;
-    private FileWriter output;
-    private String indentation;
     private VMWriter writer;
     private String className;
     private SymbolTable symbolTable;
@@ -15,11 +12,10 @@ public class CompilationEngine {
 
     public CompilationEngine(String filename)
             throws IOException {
-        file = new File(filename);
+        File file = new File(filename);
         writer = new VMWriter(file);
         tokenizer = new JackTokenizer(filename.split("[.]")[0] + ".jack");
         symbolTable = new SymbolTable();
-        indentation = "";
         className = "";
     }
 
@@ -75,7 +71,9 @@ public class CompilationEngine {
 
             if (tokenizer.tokenType() == Constants.IDENTIFIER) {
                 varName = tokenizer.getToken();
+
                 symbolTable.define(varName, varType, varKind);
+
                 tokenizer.advance(); // handling ; and ,
             } else {
                 System.out.println("ERROR in variable name");
@@ -87,10 +85,13 @@ public class CompilationEngine {
                     tokenizer.advance();
                     break;
                 } else if (tokenizer.getToken().equals(",")) {
+
                     tokenizer.advance();
                     if (tokenizer.tokenType() == Constants.IDENTIFIER) {
                         varName = tokenizer.getToken();
+
                         symbolTable.define(varName, varType, varKind);
+
                         tokenizer.advance();
                     } else {
                         System.out.println("ERROR in variable name");
@@ -113,6 +114,8 @@ public class CompilationEngine {
             this.countIF = -1;
             this.countWhile = -1;
             // header of function
+            String functionType = tokenizer.getToken();
+
             tokenizer.advance();
             String functionName = "";
 
@@ -132,12 +135,16 @@ public class CompilationEngine {
                 return;
             }
 
-
             if (tokenizer.tokenType() == Constants.SYMBOL) { // parameters bracket in the function
                 tokenizer.advance();
             } else {
                 System.out.println("Error: Expected symbol '(' ");
                 return;
+            }
+
+            // initial parameter (this) object.
+            if(functionType.equals("method")) {
+                symbolTable.define("", "", Kind.ARG);
             }
 
             // parameters of function
@@ -158,7 +165,6 @@ public class CompilationEngine {
 
                 if (tokenizer.tokenType() == Constants.SYMBOL) {
                     if (tokenizer.symbol().equals(")")) {
-
                         symbolTable.define(argName, argType, Kind.ARG);
                         break;
                     }
@@ -183,9 +189,23 @@ public class CompilationEngine {
                 System.out.println("Error ,there's no symbol {");
                 return;
             }
-            // entered the function
+            // body of the function
             int nLocals = compileVarDecs();
             writer.writeFunctions(className + "." + functionName, nLocals);
+
+            if(functionType.equals("constructor")) {
+
+                writer.writePush(Constants.CONSTANT, symbolTable.getNumFields());
+                writer.writeCall("Memory.alloc", 1);
+                writer.writePop(Kind.POINTER, 0);
+
+            } else if(functionType.equals("method")) {
+
+                writer.writePush(Kind.ARG, 0);
+                writer.writePop(Kind.POINTER, 0);
+
+            }
+
             compileStatements();
 
             if (tokenizer.tokenType() == Constants.SYMBOL) {
@@ -226,6 +246,7 @@ public class CompilationEngine {
             }
 
             symbolTable.define(varName, varType, Kind.VAR);
+
             while (tokenizer.tokenType() == Constants.SYMBOL) {
 
                 if (tokenizer.getToken().equals(";")) {
@@ -274,7 +295,6 @@ public class CompilationEngine {
                 System.out.println("Error: Expected {do, return, while, let, if}");
                 return;
             }
-
         }
     }
 
@@ -359,7 +379,6 @@ public class CompilationEngine {
             return;
         }
 
-
         // else statement
         if (tokenizer.keyword() == Constants.ELSE) {
             writer.writeGoto("IF_END" + IFnum);
@@ -369,7 +388,6 @@ public class CompilationEngine {
         } else {
             writer.writeLabel("IF_FALSE" + IFnum);
         }
-
     }
 
     private void compileElseStatement() throws IOException {
@@ -397,11 +415,12 @@ public class CompilationEngine {
     private void compileDoStatement() throws IOException {
         String functionName = "";
         tokenizer.advance();
+
         if (tokenizer.tokenType() == Constants.IDENTIFIER) {
             functionName += tokenizer.getToken();
             tokenizer.advance();
         } else {
-            System.out.println("it should be an identifier after do keywords");
+            System.out.println("Expected: an identifier after do keywords");
             return;
         }
 
@@ -419,10 +438,19 @@ public class CompilationEngine {
             }
         }
 
+        int numParameters = 0;
         if (tokenizer.tokenType() == Constants.SYMBOL) {
-            String symb = new String(tokenizer.symbol());
-            tokenizer.advance();
-            if (symb.equals(".")) {
+            String sym = new String(tokenizer.symbol());
+            if (sym.equals(".")) {
+
+                tokenizer.advance();
+
+                if(symbolTable.IndexOf(functionName) != -1) { // if it's an object name.
+                    writer.writePush(symbolTable.KindOf(functionName), symbolTable.IndexOf(functionName));
+                    functionName = symbolTable.TypeOf(functionName);
+                    numParameters++;
+                }
+
                 functionName += '.';
                 if (tokenizer.tokenType() == Constants.IDENTIFIER) {
                     functionName += tokenizer.getToken();
@@ -431,13 +459,22 @@ public class CompilationEngine {
                     System.out.println("Error in the name of a method");
                     return;
                 }
+
                 if (tokenizer.tokenType() == Constants.SYMBOL) {
                     tokenizer.advance();
                 } else {
                     System.out.println("Expected: open bracket '(' ");
                     return;
                 }
-            } else if (!symb.equals("(")) {
+            } else if(sym.equals("(")) {
+
+                writer.writePush(Kind.POINTER, 0);
+                functionName = className + "." + functionName;
+                numParameters ++;
+
+                tokenizer.advance();
+
+            } else {
                 System.out.println("Expected: open bracket '(' ");
                 return;
             }
@@ -446,7 +483,7 @@ public class CompilationEngine {
             return;
         }
 
-        int numParameters = compileExpressionList();
+        numParameters += compileExpressionList();
         writer.writeCall(functionName, numParameters);
         writer.writePop(Kind.TEMP, 0);
 
@@ -479,16 +516,19 @@ public class CompilationEngine {
         }
 
         if (symbolTable.IndexOf(variableName) == -1) {
-            System.out.println("Error: " + variableName + "is not defined");
+            System.out.println("Error: " + variableName + " is not defined");
             return;
         }
+
         boolean isArray = false;
         if (tokenizer.symbol().equals("[")) {
+
             isArray = true;
             tokenizer.advance();
             compileExpression();
             writer.writePush(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
             writer.writeArithmetic(Command.ADD);
+
             if (tokenizer.tokenType() == Constants.SYMBOL
                     && tokenizer.symbol().equals("]")) {
                 tokenizer.advance();
@@ -514,6 +554,7 @@ public class CompilationEngine {
             writer.writePush(Kind.TEMP, 0);
             writer.writePop(Kind.THAT, 0);
         } else {
+            System.out.println(symbolTable.KindOf(variableName));
             writer.writePop(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
         }
 
@@ -600,6 +641,7 @@ public class CompilationEngine {
 
     private void compileExpression() throws IOException {
         compileTerm();
+
         while (tokenizer.symbol().equals("+") || tokenizer.symbol().equals("-")
                 || tokenizer.symbol().equals("*") || tokenizer.symbol().equals("/") ||
                 tokenizer.symbol().equals("&amp;") || tokenizer.symbol().equals("|") ||
@@ -617,20 +659,24 @@ public class CompilationEngine {
                 || tokenizer.tokenType() == Constants.KEYWORD) {
 
             String identifierName = tokenizer.getToken();
-            System.out.println(tokenizer.getToken());
+
             tokenizer.advance();
 
             if (tokenizer.tokenType() == Constants.SYMBOL) {
                 String sym = new String(tokenizer.symbol());
+                int numParameters = 0;
                 if (sym.equals(".")) {
-                    identifierName += '.';
-                    System.out.println(tokenizer.getToken());
-                    tokenizer.advance();
-                    System.out.println(tokenizer.getToken());
 
+                    tokenizer.advance();
+
+                    if(symbolTable.IndexOf(identifierName) != -1) { // if it's an object name.
+                        writer.writePush(symbolTable.KindOf(identifierName), symbolTable.IndexOf(identifierName));
+                        identifierName = symbolTable.TypeOf(identifierName);
+                        numParameters++;
+                    }
+                    identifierName += '.';
                     if (tokenizer.tokenType() == Constants.IDENTIFIER) {
                         identifierName += tokenizer.getToken();
-                        System.out.println(tokenizer.getToken());
                         tokenizer.advance();
                     } else {
                         System.out.println("Expected: a function name after the dot.");
@@ -644,7 +690,7 @@ public class CompilationEngine {
                         return;
                     }
 
-                    int numParameters = compileExpressionList();
+                    numParameters += compileExpressionList();
                     writer.writeCall(identifierName, numParameters);
 
                     if (tokenizer.tokenType() == Constants.SYMBOL) {
@@ -655,11 +701,14 @@ public class CompilationEngine {
                     }
                 } else if (sym.equals("[")) {
                     tokenizer.advance();
+
                     compileExpression();
+
                     writer.writePush(symbolTable.KindOf(identifierName), symbolTable.IndexOf(identifierName));
                     writer.writeArithmetic(Command.ADD);
                     writer.writePop(Kind.POINTER, 1);
                     writer.writePush(Kind.THAT, 0);
+
                     if (tokenizer.symbol().equals("]")) {
                         tokenizer.advance();
                     } else {
@@ -667,7 +716,7 @@ public class CompilationEngine {
                         return;
                     }
                 } else if (sym.equals("(")) {
-                    int numParameters = compileExpressionList();
+                    numParameters += compileExpressionList();
                     writer.writeCall(identifierName, numParameters);
 
                     if (tokenizer.tokenType() == Constants.SYMBOL) {
@@ -682,6 +731,8 @@ public class CompilationEngine {
                         if (identifierName.equals("true")) {
                             writer.writeArithmetic(Command.NOT);
                         }
+                    } else if(identifierName.equals("this")) {
+                        writer.writePush(Kind.POINTER, 0);
                     } else {
                         String variableName = identifierName;
                         writer.writePush(symbolTable.KindOf(variableName), symbolTable.IndexOf(variableName));
@@ -704,6 +755,7 @@ public class CompilationEngine {
 
             writer.writePush(Constants.CONSTANT, Integer.valueOf(tokenizer.getToken()));
             tokenizer.advance();
+
         } else if (tokenizer.tokenType() == Constants.SYMBOL
                 && tokenizer.symbol().equals("(")) {
 
@@ -735,3 +787,4 @@ public class CompilationEngine {
         writer.close();
     }
 }
+

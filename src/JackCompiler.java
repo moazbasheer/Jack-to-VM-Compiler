@@ -4,14 +4,12 @@ import java.io.IOException;
 
 
 public class JackCompiler {
-    private static String filename;
-    private static File file;
+    private String filename;
 
-    private void run() {
-        file = new File(filename);
+    public void compileFile(String filename) {
+        File file = new File(filename);
         String[] fileName = null;
         if (file.isFile()) {
-
             if (filename.contains(".jack")) {
                 fileName = new String[1];
                 fileName[0] = filename;
@@ -47,7 +45,7 @@ public class JackCompiler {
     }
 
     public static void main(String[] args) {
-        filename = "";
+        String filename = "";
         for (int i = 0; i < args.length; i++) {
             if (i == 0)
                 filename += args[i];
@@ -56,6 +54,6 @@ public class JackCompiler {
         }
 
         JackCompiler compiler = new JackCompiler();
-        compiler.run();
+        compiler.compileFile(filename);
     }
 }

@@ -25,9 +25,9 @@ public class Constants {
     public static final int TRUE = 22;
     public static final int FALSE = 23;
     public static final int NULL = 24;
-    public static final int THIS = 25;
-    public static final int OBJECT = 26;
-    public static final int STRING = 27;
+    public static final int THAT = 25;
+    public static final int THIS = 26;
     public static final String TABLE_SRC = "symbol tables.txt";
     public static final int CONSTANT = 28;
+
 }
